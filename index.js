@@ -45,7 +45,7 @@ async function askAI(prompt) {
     const response = await axios.post(
       'https://openrouter.ai/api/v1/chat/completions',
       {
-        model: 'deepseek/deepseek-chat-v3-0324:free',
+        model: 'meta-llama/llama-3.3-70b-instruct:free',
         messages: [
           {
             role: 'user',
@@ -75,7 +75,7 @@ async function askAI(prompt) {
       const fallback = await axios.post(
         'https://openrouter.ai/api/v1/chat/completions',
         {
-          model: 'qwen/qwen3-32b:free',
+          model: 'mistralai/mistral-7b-instruct:free',
           messages: [
             {
               role: 'user',
