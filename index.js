@@ -143,4 +143,14 @@ async function startBot() {
 
 }
 
+const app = express()
+
+app.get('/', (req, res) => {
+  res.send('Bot online')
+})
+
+app.listen(process.env.PORT || 3000, () => {
+  console.log('Web server running')
+})
+
 startBot()
