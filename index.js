@@ -1,12 +1,20 @@
-import express from 'express'
 import makeWASocket, {
-  useMultiFileAuthState,
-  DisconnectReason
+  useMultiFileAuthState
 } from '@whiskeysockets/baileys'
 
 import P from 'pino'
 import axios from 'axios'
-import qrcode from 'qrcode-terminal'
+import express from 'express'
+
+const app = express()
+
+app.get('/', (req, res) => {
+  res.send('Bot online')
+})
+
+app.listen(process.env.PORT || 3000, () => {
+  console.log('Web server running')
+})
 
 async function askAI(prompt) {
 
@@ -83,7 +91,11 @@ async function startBot() {
   sock.ev.on('connection.update', ({ connection, qr }) => {
 
     if (qr) {
-      qrcode.generate(qr, { small: true })
+
+      console.log('================ QR CODE ================')
+      console.log(qr)
+      console.log('=========================================')
+
     }
 
     if (connection === 'open') {
@@ -91,6 +103,7 @@ async function startBot() {
     }
 
     if (connection === 'close') {
+      console.log('RECONNECTING...')
       startBot()
     }
 
@@ -114,12 +127,14 @@ async function startBot() {
       text.replace('!ia', '').trim()
 
     if (!pergunta) {
+
       await sock.sendMessage(
         msg.key.remoteJid,
         {
-          text: 'Faça uma pergunta.'
+          text: 'Use:\n!ia sua pergunta'
         }
       )
+
       return
     }
 
@@ -142,15 +157,5 @@ async function startBot() {
   })
 
 }
-
-const app = express()
-
-app.get('/', (req, res) => {
-  res.send('Bot online')
-})
-
-app.listen(process.env.PORT || 3000, () => {
-  console.log('Web server running')
-})
 
 startBot()
