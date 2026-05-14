@@ -1,18 +1,37 @@
 import makeWASocket, {
-  useMultiFileAuthState
+  useMultiFileAuthState,
+  fetchLatestBaileysVersion
 } from '@whiskeysockets/baileys'
 
-import P from 'pino'
-import axios from 'axios'
 import express from 'express'
+import P from 'pino'
+import QRCode from 'qrcode'
+import axios from 'axios'
 
 const app = express()
 
-app.get('/', (req, res) => {
+let qrCodeData = 'Carregando QR...'
+
+app.get('/', async (req, res) => {
+
+  if (!qrCodeData.startsWith('data:image')) {
+
+    return res.send(`
+      <body style="font-family:sans-serif;text-align:center">
+        <h1>${qrCodeData}</h1>
+        <p>Atualize a página em alguns segundos.</p>
+      </body>
+    `)
+
+  }
+
   res.send(`
-    <h1>LinkAi Bot Online</h1>
-    <p>Veja o pairing code nos logs do Render.</p>
+    <body style="font-family:sans-serif;text-align:center">
+      <h1>Escaneie o QR</h1>
+      <img src="${qrCodeData}" />
+    </body>
   `)
+
 })
 
 app.listen(process.env.PORT || 3000, () => {
@@ -46,34 +65,7 @@ async function askAI(prompt) {
 
   } catch {
 
-    try {
-
-      const fallback = await axios.post(
-        'https://openrouter.ai/api/v1/chat/completions',
-        {
-          model: 'qwen/qwen3-32b:free',
-          messages: [
-            {
-              role: 'user',
-              content: prompt
-            }
-          ]
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      )
-
-      return fallback.data.choices[0].message.content
-
-    } catch {
-
-      return 'Erro na IA.'
-
-    }
+    return 'Erro na IA.'
 
   }
 
@@ -84,48 +76,35 @@ async function startBot() {
   const { state, saveCreds } =
     await useMultiFileAuthState('./session')
 
+  const { version } =
+    await fetchLatestBaileysVersion()
+
   const sock = makeWASocket({
+    version,
     logger: P({ level: 'silent' }),
     auth: state
   })
 
   sock.ev.on('creds.update', saveCreds)
 
-  if (!sock.authState.creds.registered) {
+  sock.ev.on('connection.update', async ({
+    connection,
+    qr
+  }) => {
 
-    console.log('Generating Pairing Code...')
+    if (qr) {
 
-    setTimeout(async () => {
+      console.log('QR RECEIVED')
 
-      try {
+      qrCodeData = await QRCode.toDataURL(qr)
 
-        const code =
-          await sock.requestPairingCode(
-            process.env.PHONE_NUMBER
-          )
-
-        const formatted =
-          code?.match(/.{1,4}/g)?.join('-') || code
-
-        console.log('==============================')
-        console.log('PAIRING CODE:', formatted)
-        console.log('==============================')
-
-      } catch (e) {
-
-        console.log(e)
-
-      }
-
-    }, 10000)
-
-  }
-
-  sock.ev.on('connection.update', ({ connection }) => {
+    }
 
     if (connection === 'open') {
 
       console.log('BOT ONLINE')
+
+      qrCodeData = 'BOT ONLINE'
 
     }
 
@@ -139,7 +118,9 @@ async function startBot() {
 
   })
 
-  sock.ev.on('messages.upsert', async ({ messages }) => {
+  sock.ev.on('messages.upsert', async ({
+    messages
+  }) => {
 
     const msg = messages[0]
 
@@ -158,14 +139,13 @@ async function startBot() {
 
     if (!pergunta) {
 
-      await sock.sendMessage(
+      return sock.sendMessage(
         msg.key.remoteJid,
         {
-          text: 'Use:\n!ia sua pergunta'
+          text: 'Use !ia pergunta'
         }
       )
 
-      return
     }
 
     await sock.sendMessage(
