@@ -5,28 +5,14 @@ import makeWASocket, {
 import P from 'pino'
 import axios from 'axios'
 import express from 'express'
-import QRCode from 'qrcode'
-
-let currentQR = null
 
 const app = express()
 
-app.get('/', async (req, res) => {
-
-  if (!currentQR) {
-    return res.send(`
-      <h1>Bot online</h1>
-      <p>Aguardando QR...</p>
-    `)
-  }
-
-  const qrImage = await QRCode.toDataURL(currentQR)
-
+app.get('/', (req, res) => {
   res.send(`
-    <h1>Escaneie o QR Code</h1>
-    <img src="${qrImage}" />
+    <h1>LinkAi Bot Online</h1>
+    <p>Veja o pairing code nos logs do Render.</p>
   `)
-
 })
 
 app.listen(process.env.PORT || 3000, () => {
@@ -105,19 +91,39 @@ async function startBot() {
 
   sock.ev.on('creds.update', saveCreds)
 
-  sock.ev.on('connection.update', ({ connection, qr }) => {
+  if (!sock.authState.creds.registered) {
 
-    if (qr) {
+    console.log('Generating Pairing Code...')
 
-      currentQR = qr
+    setTimeout(async () => {
 
-      console.log('QR RECEIVED')
+      try {
 
-    }
+        const code =
+          await sock.requestPairingCode(
+            process.env.PHONE_NUMBER
+          )
+
+        const formatted =
+          code?.match(/.{1,4}/g)?.join('-') || code
+
+        console.log('==============================')
+        console.log('PAIRING CODE:', formatted)
+        console.log('==============================')
+
+      } catch (e) {
+
+        console.log(e)
+
+      }
+
+    }, 10000)
+
+  }
+
+  sock.ev.on('connection.update', ({ connection }) => {
 
     if (connection === 'open') {
-
-      currentQR = null
 
       console.log('BOT ONLINE')
 
