@@ -5,11 +5,28 @@ import makeWASocket, {
 import P from 'pino'
 import axios from 'axios'
 import express from 'express'
+import QRCode from 'qrcode'
+
+let currentQR = null
 
 const app = express()
 
-app.get('/', (req, res) => {
-  res.send('Bot online')
+app.get('/', async (req, res) => {
+
+  if (!currentQR) {
+    return res.send(`
+      <h1>Bot online</h1>
+      <p>Aguardando QR...</p>
+    `)
+  }
+
+  const qrImage = await QRCode.toDataURL(currentQR)
+
+  res.send(`
+    <h1>Escaneie o QR Code</h1>
+    <img src="${qrImage}" />
+  `)
+
 })
 
 app.listen(process.env.PORT || 3000, () => {
@@ -92,19 +109,26 @@ async function startBot() {
 
     if (qr) {
 
-      console.log('================ QR CODE ================')
-      console.log(qr)
-      console.log('=========================================')
+      currentQR = qr
+
+      console.log('QR RECEIVED')
 
     }
 
     if (connection === 'open') {
+
+      currentQR = null
+
       console.log('BOT ONLINE')
+
     }
 
     if (connection === 'close') {
+
       console.log('RECONNECTING...')
+
       startBot()
+
     }
 
   })
