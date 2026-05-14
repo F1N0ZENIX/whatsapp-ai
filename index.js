@@ -42,6 +42,8 @@ async function askAI(prompt) {
 
   try {
 
+    console.log('SENDING TO OPENROUTER:', prompt)
+
     const response = await axios.post(
       'https://openrouter.ai/api/v1/chat/completions',
       {
@@ -61,6 +63,8 @@ async function askAI(prompt) {
       }
     )
 
+    console.log('AI RESPONSE RECEIVED')
+
     return response.data.choices[0].message.content
 
   } catch (err) {
@@ -71,6 +75,8 @@ async function askAI(prompt) {
     )
 
     try {
+
+      console.log('TRYING FALLBACK MODEL')
 
       const fallback = await axios.post(
         'https://openrouter.ai/api/v1/chat/completions',
@@ -90,6 +96,8 @@ async function askAI(prompt) {
           }
         }
       )
+
+      console.log('FALLBACK RESPONSE RECEIVED')
 
       return fallback.data.choices[0].message.content
 
@@ -169,7 +177,11 @@ async function startBot() {
 
     if (!text) return
 
+    console.log('MESSAGE:', text)
+
     if (!text.startsWith('!ia')) return
+
+    console.log('IA COMMAND DETECTED')
 
     const pergunta =
       text.replace('!ia', '').trim()
@@ -193,6 +205,8 @@ async function startBot() {
     )
 
     const resposta = await askAI(pergunta)
+
+    console.log('FINAL RESPONSE:', resposta)
 
     await sock.sendMessage(
       msg.key.remoteJid,
