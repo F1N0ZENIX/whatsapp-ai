@@ -63,9 +63,46 @@ async function askAI(prompt) {
 
     return response.data.choices[0].message.content
 
-  } catch {
+  } catch (err) {
 
-    return 'Erro na IA.'
+    console.log(
+      'OPENROUTER ERROR:',
+      err.response?.data || err.message
+    )
+
+    try {
+
+      const fallback = await axios.post(
+        'https://openrouter.ai/api/v1/chat/completions',
+        {
+          model: 'qwen/qwen3-32b:free',
+          messages: [
+            {
+              role: 'user',
+              content: prompt
+            }
+          ]
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+
+      return fallback.data.choices[0].message.content
+
+    } catch (err2) {
+
+      console.log(
+        'FALLBACK ERROR:',
+        err2.response?.data || err2.message
+      )
+
+      return 'Erro na IA.'
+
+    }
 
   }
 
